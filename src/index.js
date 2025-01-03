@@ -7,13 +7,13 @@ import { initializeApp } from "firebase/app";
 import { FirebaseProvider } from './firebase_context';
 
 const firebaseConfig = {
-  apiKey: "AIzaSyDM1r-rzeDN1_RIWICght62NiC1FXW9U8E",
-  authDomain: "mailex-cfa6e.firebaseapp.com",
-  projectId: "mailex-cfa6e",
-  storageBucket: "mailex-cfa6e.firebasestorage.app",
-  messagingSenderId: "631605633726",
-  appId: "1:631605633726:web:d113f17eefb0176513f4ef",
-  measurementId: "G-X8GF7HWDQ2"
+  apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
+  authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.REACT_APP_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.REACT_APP_FIREBASE_APP_ID,
+  measurementId: process.env.REACT_APP_FIREBASE_MEASUREMENT_ID
 };
 
 // Initialize Firebase
