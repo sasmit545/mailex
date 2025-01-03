@@ -2,9 +2,15 @@ import React, { useEffect, useState } from "react";
 import { useFirebase } from "../../firebase_context";
 import { useNavigate } from "react-router-dom";
 import { routes } from "../../app_router";
-import { Container, Typography, Button, Box } from "@mui/material";
+import {
+  Container,
+  Typography,
+  Button,
+  Box,
+  Snackbar,
+  Alert,
+} from "@mui/material";
 import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
-import { Snackbar, Alert } from "@mui/material";
 
 const LoginPage = () => {
   const [loading, setLoading] = useState(false);
