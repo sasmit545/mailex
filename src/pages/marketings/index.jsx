@@ -1,7 +1,14 @@
 import React, { useEffect, useState } from "react";
 import { useFirebase } from "../../firebase_context";
 import { useNavigate } from "react-router-dom";
-import { collection, query, where, getDocs } from "firebase/firestore";
+import {
+  collection,
+  query,
+  where,
+  getDocs,
+  updateDoc,
+  doc,
+} from "firebase/firestore";
 import { routes } from "../../app_router";
 import {
   Button,
@@ -14,6 +21,10 @@ import {
   Paper,
   Snackbar,
   Alert,
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  DialogContentText,
 } from "@mui/material";
 import { signOut } from "firebase/auth";
 
@@ -21,6 +32,7 @@ const MarketingPage = () => {
   const [logoutLoading, setLogoutLoading] = useState(false);
   const [marketings, setMarketings] = useState([]);
   const [error, setError] = useState(null);
+  const [dialogProspects, setDialogProspects] = useState(null);
 
   const { auth, db, user } = useFirebase();
   const navigate = useNavigate();
@@ -32,13 +44,16 @@ const MarketingPage = () => {
     }
 
     const fetchMarketingData = async () => {
-      const q = query(
-        collection(db, "marketings"),
-        where("userID", "==", user.uid)
-      );
       try {
+        const q = query(
+          collection(db, "marketings"),
+          where("userID", "==", user.uid)
+        );
         const querySnapshot = await getDocs(q);
-        const data = querySnapshot.docs.map((doc) => doc.data());
+        const data = querySnapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
         setMarketings(data);
       } catch (error) {
         setError("Failed to fetch marketing data");
@@ -64,6 +79,103 @@ const MarketingPage = () => {
     setLogoutLoading(false);
   };
 
+  const generateProspects = async (id) => {
+    setMarketings((prev) =>
+      prev.map((marketing) =>
+        marketing.id === id
+          ? { ...marketing, prospectsLoading: true }
+          : marketing
+      )
+    );
+
+    try {
+      // TODO: use API to generate prospects
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+      const mockProspects = [
+        {
+          name: "John Doe",
+          email: "john.doe@gmail.com",
+          linkedIn: "https://www.linkedin.com/in/johndoe",
+        },
+        {
+          name: "Jane Smith",
+          email: "jane.smith@gmail.com",
+          linkedIn: "https://www.linkedin.com/in/janesmith",
+        },
+        {
+          name: "Alice Johnson",
+          email: "alice.johnson@gmail.com",
+          linkedIn: "https://www.linkedin.com/in/alicejohnson",
+        },
+        {
+          name: "Bob Brown",
+          email: "bob.brown@gmail.com",
+          linkedIn: "https://www.linkedin.com/in/bobbrown",
+        },
+        {
+          name: "Charlie Davis",
+          email: "charlie.davis@gmail.com",
+          linkedIn: "https://www.linkedin.com/in/charliedavis",
+        },
+      ];
+
+      await updateDoc(doc(db, "marketings", id), {
+        prospects: mockProspects,
+      });
+
+      setMarketings((prev) =>
+        prev.map((marketing) =>
+          marketing.id === id
+            ? { ...marketing, prospects: mockProspects }
+            : marketing
+        )
+      );
+    } catch (error) {
+      setError("Failed to generate prospects");
+      console.error(error);
+    }
+
+    setMarketings((prev) =>
+      prev.map((marketing) =>
+        marketing.id === id
+          ? { ...marketing, prospectsLoading: undefined }
+          : marketing
+      )
+    );
+  };
+
+  const getProspectsAction = (marketing) => {
+    if (marketing.prospectsLoading) {
+      return (
+        <Button variant="contained" color="primary" disabled>
+          Loading...
+        </Button>
+      );
+    }
+
+    if (!marketing.prospects) {
+      return (
+        <Button
+          variant="contained"
+          color="primary"
+          onClick={() => generateProspects(marketing.id)}
+        >
+          Generate
+        </Button>
+      );
+    }
+
+    return (
+      <Button
+        variant="contained"
+        color="primary"
+        onClick={() => setDialogProspects(marketing.prospects)}
+      >
+        Show
+      </Button>
+    );
+  };
+
   return (
     <div style={{ padding: "20px" }}>
       {error && (
@@ -81,6 +193,20 @@ const MarketingPage = () => {
           </Alert>
         </Snackbar>
       )}
+      <Dialog open={dialogProspects} onClose={() => setDialogProspects(null)}>
+        <DialogTitle>Prospects</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            {dialogProspects?.map((prospect, index) => (
+              <TableRow key={index}>
+                <TableCell>{prospect.name}</TableCell>
+                <TableCell>{prospect.email}</TableCell>
+                <TableCell>{prospect.linkedIn}</TableCell>
+              </TableRow>
+            ))}
+          </DialogContentText>
+        </DialogContent>
+      </Dialog>
       <Button
         variant="contained"
         color="secondary"
@@ -99,7 +225,7 @@ const MarketingPage = () => {
               <TableCell>Location</TableCell>
               <TableCell>Email Start</TableCell>
               <TableCell>Email End</TableCell>
-              <TableCell>Actions</TableCell>
+              <TableCell>Prospects</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -110,15 +236,7 @@ const MarketingPage = () => {
                 <TableCell>{marketing.location}</TableCell>
                 <TableCell>{marketing.emailStart}</TableCell>
                 <TableCell>{marketing.emailEnd}</TableCell>
-                <TableCell>
-                  <Button
-                    variant="contained"
-                    color="primary"
-                    onClick={() => alert("Get Prospects")}
-                  >
-                    Get Prospects
-                  </Button>
-                </TableCell>
+                <TableCell>{getProspectsAction(marketing)}</TableCell>
               </TableRow>
             ))}
           </TableBody>
