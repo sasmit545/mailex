@@ -8,10 +8,6 @@ import {
   Typography,
   TextField,
   Button,
-  MenuItem,
-  Select,
-  InputLabel,
-  FormControl,
   Box,
   Snackbar,
   Alert,
@@ -21,11 +17,11 @@ const NewMarketing = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const [businessType, setBusinessType] = useState("");
-  const [jobRole, setJobRole] = useState("");
-  const [location, setLocation] = useState("");
-  const [emailStart, setEmailStart] = useState("");
-  const [emailEnd, setEmailEnd] = useState("");
+  const [name, setName] = useState("");
+  const [keywords, setKeywords] = useState("");
+  const [positions, setPositions] = useState("");
+  const [locations, setLocations] = useState("");
+  const [offer, setOffer] = useState("");
 
   const navigate = useNavigate();
 
@@ -42,22 +38,39 @@ const NewMarketing = () => {
 
     setLoading(true);
 
+    let leads;
     try {
-      await addDoc(collection(db, "marketings"), {
-        businessType,
-        jobRole,
-        location,
-        emailStart,
-        emailEnd,
+      leads = await generateLeads();
+    } catch (error) {
+      setError("Failed to generate leads - try different parameters");
+      console.error(error);
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const docRef = await addDoc(collection(db, "marketings"), {
+        name,
+        keywords,
+        positions,
+        locations,
+        offer,
+        leads,
         userID: user.uid,
       });
       setLoading(false);
-      navigate(routes.marketings);
+      navigate(routes.marketingLeads.replace(":id", docRef.id));
     } catch (error) {
       setError("Failed to add marketing data");
       console.error(error);
       setLoading(false);
     }
+  };
+
+  const generateLeads = async (id) => {
+    // TODO: use API to generate prospects
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+    return mockLeads;
   };
 
   return (
@@ -89,60 +102,42 @@ const NewMarketing = () => {
           New Marketing
         </Typography>
         <Box component="form" onSubmit={handleSubmit} sx={{ mt: 3 }}>
-          <FormControl fullWidth margin="normal">
-            <InputLabel>Business Type</InputLabel>
-            <Select
-              value={businessType}
-              onChange={(e) => setBusinessType(e.target.value)}
-              label="Business Type"
-            >
-              <MenuItem value="">
-                <em>Select Business Type</em>
-              </MenuItem>
-              <MenuItem value="type1">Type 1</MenuItem>
-              <MenuItem value="type2">Type 2</MenuItem>
-              <MenuItem value="type3">Type 3</MenuItem>
-            </Select>
-          </FormControl>
-          <FormControl fullWidth margin="normal">
-            <InputLabel>Job Role</InputLabel>
-            <Select
-              value={jobRole}
-              onChange={(e) => setJobRole(e.target.value)}
-              label="Job Role"
-            >
-              <MenuItem value="">
-                <em>Select Job Role</em>
-              </MenuItem>
-              <MenuItem value="role1">Role 1</MenuItem>
-              <MenuItem value="role2">Role 2</MenuItem>
-              <MenuItem value="role3">Role 3</MenuItem>
-            </Select>
-          </FormControl>
           <TextField
             margin="normal"
             fullWidth
-            label="Location"
-            value={location}
-            onChange={(e) => setLocation(e.target.value)}
+            label="Marketing Name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
           />
           <TextField
             margin="normal"
             fullWidth
-            label="Email Start"
-            multiline
-            rows={4}
-            value={emailStart}
-            onChange={(e) => setEmailStart(e.target.value)}
+            label="Keywords (comma separated)"
+            value={keywords}
+            onChange={(e) => setKeywords(e.target.value)}
           />
           <TextField
             margin="normal"
             fullWidth
-            label="Email End"
+            label="Positions (comma separated)"
+            value={positions}
+            onChange={(e) => setPositions(e.target.value)}
+          />
+          <TextField
+            margin="normal"
+            fullWidth
+            label="Locations (comma separated)"
+            value={locations}
+            onChange={(e) => setLocations(e.target.value)}
+          />
+          <TextField
+            margin="normal"
+            fullWidth
+            label="Info about your offer"
             multiline
             rows={4}
-            value={emailEnd}
-            onChange={(e) => setEmailEnd(e.target.value)}
+            value={offer}
+            onChange={(e) => setOffer(e.target.value)}
           />
           <Button
             type="submit"
@@ -151,7 +146,7 @@ const NewMarketing = () => {
             sx={{ mt: 3, mb: 2 }}
             disabled={loading}
           >
-            {loading ? "Loading..." : "Add Marketing"}
+            {loading ? "Loading..." : "Generate leads"}
           </Button>
         </Box>
       </Box>
@@ -160,3 +155,86 @@ const NewMarketing = () => {
 };
 
 export default NewMarketing;
+
+const mockLeads = [
+  {
+    name: "John Doe",
+    organization_name: "Doe Inc.",
+    email: "john.doe@gmail.com",
+    linkedin_url: "https://www.linkedin.com/in/johndoe",
+    country: "USA",
+    city: "New York",
+  },
+  {
+    name: "Jane Smith",
+    organization_name: "Smith LLC",
+    email: "jane.smith@gmail.com",
+    linkedin_url: "https://www.linkedin.com/in/janesmith",
+    country: "USA",
+    city: "Los Angeles",
+  },
+  {
+    name: "Alice Johnson",
+    organization_name: "Johnson & Co.",
+    email: "alice.johnson@gmail.com",
+    linkedin_url: "https://www.linkedin.com/in/alicejohnson",
+    country: "USA",
+    city: "Chicago",
+  },
+  {
+    name: "Bob Brown",
+    organization_name: "Brown Enterprises",
+    email: "bob.brown@gmail.com",
+    linkedin_url: "https://www.linkedin.com/in/bobbrown",
+    country: "USA",
+    city: "Houston",
+  },
+  {
+    name: "Charlie Davis",
+    organization_name: "Davis Corp.",
+    email: "charlie.davis@gmail.com",
+    linkedin_url: "https://www.linkedin.com/in/charliedavis",
+    country: "USA",
+    city: "Phoenix",
+  },
+  {
+    name: "Eve Wilson",
+    organization_name: "Wilson Ltd.",
+    email: "eve.wilson@gmail.com",
+    linkedin_url: "https://www.linkedin.com/in/evewilson",
+    country: "USA",
+    city: "Philadelphia",
+  },
+  {
+    name: "Frank Miller",
+    organization_name: "Miller Group",
+    email: "frank.miller@gmail.com",
+    linkedin_url: "https://www.linkedin.com/in/frankmiller",
+    country: "USA",
+    city: "San Antonio",
+  },
+  {
+    name: "Grace Lee",
+    organization_name: "Lee Partners",
+    email: "grace.lee@gmail.com",
+    linkedin_url: "https://www.linkedin.com/in/gracelee",
+    country: "USA",
+    city: "San Diego",
+  },
+  {
+    name: "Henry Clark",
+    organization_name: "Clark Associates",
+    email: "henry.clark@gmail.com",
+    linkedin_url: "https://www.linkedin.com/in/henryclark",
+    country: "USA",
+    city: "Dallas",
+  },
+  {
+    name: "Ivy Martinez",
+    organization_name: "Martinez Holdings",
+    email: "ivy.martinez@gmail.com",
+    linkedin_url: "https://www.linkedin.com/in/ivymartinez",
+    country: "USA",
+    city: "San Jose",
+  },
+];

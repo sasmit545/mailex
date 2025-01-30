@@ -5,6 +5,7 @@ service cloud.firestore {
     match /marketings/{marketingId} {
       allow create: if request.auth != null;
       allow read: if request.auth != null && request.auth.uid == resource.data.userID;
+      allow update: if request.auth != null && request.auth.uid == resource.data.userID;
     }
   }
 }

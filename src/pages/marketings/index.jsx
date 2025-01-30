@@ -12,13 +12,8 @@ import {
 import { routes } from "../../app_router";
 import {
   Button,
-  TableContainer,
-  Table,
   TableRow,
   TableCell,
-  TableBody,
-  TableHead,
-  Paper,
   Snackbar,
   Alert,
   Dialog,
@@ -28,7 +23,7 @@ import {
 } from "@mui/material";
 import { signOut } from "firebase/auth";
 
-const MarketingPage = () => {
+const MarketingsPage = () => {
   const [logoutLoading, setLogoutLoading] = useState(false);
   const [marketings, setMarketings] = useState([]);
   const [error, setError] = useState(null);
@@ -43,7 +38,7 @@ const MarketingPage = () => {
       return;
     }
 
-    const fetchMarketingData = async () => {
+    const fetchMarketingsData = async () => {
       try {
         const q = query(
           collection(db, "marketings"),
@@ -61,7 +56,7 @@ const MarketingPage = () => {
       }
     };
 
-    fetchMarketingData();
+    fetchMarketingsData();
   }, [db, navigate, user]);
 
   const handleAddMarketing = () => {
@@ -216,7 +211,7 @@ const MarketingPage = () => {
       >
         {logoutLoading ? "Loading..." : "Logout"}
       </Button>
-      <TableContainer component={Paper}>
+      {/* <TableContainer component={Paper}>
         <Table>
           <TableHead>
             <TableRow>
@@ -241,20 +236,20 @@ const MarketingPage = () => {
             ))}
           </TableBody>
         </Table>
-      </TableContainer>
+      </TableContainer> */}
       <div
-        style={{ display: "flex", justifyContent: "center", marginTop: "20px" }}
+        style={{ display: "flex", justifyContent: "center", marginTop: "40vh" }}
       >
         <Button
           variant="contained"
           color="primary"
           onClick={handleAddMarketing}
         >
-          Add Marketing
+          New Marketing
         </Button>
       </div>
     </div>
   );
 };
 
-export default MarketingPage;
+export default MarketingsPage;
