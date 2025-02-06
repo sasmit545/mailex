@@ -1,60 +1,111 @@
-const { onRequest } = require("firebase-functions/v2/https");
-const logger = require("firebase-functions/logger");
-const axios = require("axios");
-const nodemailer=require("nodemailer")
-
-const dotenv =require('dotenv')
-const OpenAI=require('openai')
-dotenv.config()
-
+const { onRequest } = require('firebase-functions/v2/https');
+const axios = require('axios');
+const nodemailer = require('nodemailer');
+const dotenv = require('dotenv');
+const OpenAI = require('openai');
+dotenv.config();
 
 const client = new OpenAI({
-    apiKey:process.env.OPENAI_API_KEY,
-    organization: process.env.ORG_ID  // This is the default and can be omitted
+  apiKey: 'process.env.OPENAI_API_KEY',
+  organization: process.env.ORG_ID, // This is the default and can be omitted
 });
-  
+
 exports.getProspects = onRequest(async (request, response) => {
-    const {location,titles}=request.body;
-    
-  const url = `https://api.apollo.io/api/v1/mixed_people/search?person_titles[]=${titles}&person_locations[]=${location}&person_seniorities[]=`;
+  const { keywords, positions, locations } = request.body;
+
+  if (!keywords || !positions || !locations) {
+    return response.status(400).json({
+      error: 'Missing required fields',
+    });
+  }
+
+  if (!Array.isArray(keywords) || !Array.isArray(positions) || !Array.isArray(locations)) {
+    return response.status(400).json({
+      error: 'Keywords, positions, and locations must be arrays',
+    });
+  }
+
   const options = {
     method: 'POST',
     headers: {
-      'Accept': 'application/json',
+      Accept: 'application/json',
       'Cache-Control': 'no-cache',
       'Content-Type': 'application/json',
-      'x-api-key': 'JSqrgvwAWntLIDmLjb5Y6w'
-    }
+      'x-api-key': 'JSqrgvwAWntLIDmLjb5Y6w',
+    },
   };
 
+  let orgUrl = 'https://api.apollo.io/api/v1/mixed_companies/search?';
+
+  for (let i = 0; i < keywords.length; i++) {
+    orgUrl += `q_organization_keyword_tags[]=${encodeURIComponent(keywords[i])}&`;
+  }
+
+  for (let i = 0; i < locations.length; i++) {
+    orgUrl += `organization_locations[]=${encodeURIComponent(locations[i])}&`;
+  }
+
+  let peopleUrl =
+    'https://api.apollo.io/api/v1/mixed_people/search?contact_email_status[]=verified&contact_email_status[]=likely%20to%20engage';
+
+  for (let i = 0; i < positions.length; i++) {
+    peopleUrl += `person_titles[]=${encodeURIComponent(positions[i])}&`;
+  }
+
   try {
-    const result = await axios(url, options);
-    logger.info('API response received', { data: result.data });
-    response.json(result.data.people); // Send the API response to the client
+    const orgResult = await axios(orgUrl, options);
+
+    if (orgResult.data.organizations.length === 0) {
+      return response.status(404).json({
+        error: 'No organizations found',
+      });
+    }
+
+    const organizations = orgResult.data.organizations.map((org) => ({ name: org.name, id: org.id }));
+
+    for (let i = 0; i < organizations.length; i++) {
+      peopleUrl += `organization_ids[]=${encodeURIComponent(organizations[i].id)}&`;
+    }
+
+    const peopleResult = await axios(peopleUrl, options);
+
+    console.log(peopleResult.data);
+
+    if (peopleResult.data.people.length === 0) {
+      return response.status(404).json({
+        error: 'No people found',
+      });
+    }
+
+    const people = peopleResult.data.people.map((person) => ({
+      name: person.name,
+      linkedin_url: person.linkedin_url,
+      email: person.email,
+      country: person.country,
+      city: person.city,
+      organization_name: person.organization.name,
+      title: person.title,
+    }));
+
+    return response.json(people);
   } catch (error) {
-    logger.error('Error fetching data', { error: error });
+    console.error('Getting prospects', { error: error });
     response.status(500).json({ error: 'Failed to fetch data' });
   }
 });
 
-
-
-exports.sendMail=onRequest(async(req,res)=>{
-  const {email,subject,user_email,receiver_email,appPassword}=req.body
+exports.sendMail = onRequest(async (req, res) => {
+  const { email, subject, user_email, receiver_email, appPassword } = req.body;
   const transporter = nodemailer.createTransport({
-    host: "smtp.gmail.com",
+    host: 'smtp.gmail.com',
     port: 587,
     secure: false, // or 'STARTTLS'
     auth: {
       user: user_email,
-      pass: appPassword
-
-    }
-
-
-  })
-  const mailOptions = 
-  {
+      pass: appPassword,
+    },
+  });
+  const mailOptions = {
     from: user_email,
     to: receiver_email,
     subject: subject,
@@ -63,88 +114,73 @@ exports.sendMail=onRequest(async(req,res)=>{
   transporter.sendMail(mailOptions, (error, info) => {
     if (error) {
       return console.log(error);
-
     }
     console.log('Message %s sent: %s', info.messageId, info.response);
+  });
+  res.json({
+    message: 'Email sent successfully',
+    status: 200,
+  });
+});
+async function getLinkedinData(url) {
+  console.log('linekdinstartedurl');
+  const options = {
+    method: 'GET',
+    url: 'https://linkedin-api8.p.rapidapi.com/get-profile-data-by-url',
+    params: {
+      url: url,
+    },
+    headers: {
+      'x-rapidapi-key': '78d9ef7540msha9b93eee54e1f13p152c24jsnd2aa3f7566c1',
+      'x-rapidapi-host': 'linkedin-api8.p.rapidapi.com',
+    },
+  };
+
+  try {
+    const response = await axios.request(options);
+
+    return {
+      username: response.data.username,
+      name: `${response.data.firstName} ${response.data.lastName}`,
+      position: {
+        title: response.data.fullPositions[0].title,
+        company: response.data.fullPositions[0].companyName,
+      },
+      summary: response.data.summary,
+    };
+  } catch (error) {
+    console.error(error);
   }
-  );
-  res.json({message:"Email sent successfully",
-           status:200
-  })
-
-
-
-
-    
-})
- async function getLinkedinData(url){
-
-      console.log("linekdinstartedurl")
-      const options = {
-        method: 'GET',
-        url: 'https://linkedin-api8.p.rapidapi.com/get-profile-data-by-url',
-        params: {
-          url: url
-        },
-        headers: {
-          'x-rapidapi-key': '78d9ef7540msha9b93eee54e1f13p152c24jsnd2aa3f7566c1',
-          'x-rapidapi-host': 'linkedin-api8.p.rapidapi.com'
-        }
-      };
-
-      try {
-        const response = await axios.request(options);
-       
-
-        return {
-          username:response.data.username,
-          name:`${response.data.firstName} ${response.data.lastName}`,
-          position:{
-            title:response.data.fullPositions[0].title,
-            company:response.data.fullPositions[0].companyName,
-
-          },
-          summary:response.data.summary
-          
-        }
-      } catch (error) {
-        console.error(error);
-      }
 }
 
-async function getFirstPost(username){
-
-  console.log("linekdinstartedpost")
+async function getFirstPost(username) {
+  console.log('linekdinstartedpost');
 
   const options = {
     method: 'GET',
     url: 'https://linkedin-api8.p.rapidapi.com/get-profile-posts',
     params: {
-      username: username
+      username: username,
     },
     headers: {
       'x-rapidapi-key': '78d9ef7540msha9b93eee54e1f13p152c24jsnd2aa3f7566c1',
-      'x-rapidapi-host': 'linkedin-api8.p.rapidapi.com'
-    }
+      'x-rapidapi-host': 'linkedin-api8.p.rapidapi.com',
+    },
   };
-  
+
   try {
     const response = await axios.request(options);
     const posts = response.data.data;
     const firstPost = posts[0];
     return firstPost;
-    
   } catch (error) {
-    return  error
+    return error;
   }
-
-
-
 }
 
 async function generateMailbody(firstPost, name, job, summary, sender_name, sender_details) {
-  console.log("emailbodystarted");
-  
+  console.log('emailbodystarted');
+
   const email_prompt = `
 ###Role
 You are writing as ${sender_name}, ${sender_details} contacting ${name},
@@ -184,21 +220,20 @@ Focus on connection and shared interests, not pitching services.
 `;
 
   try {
-      const res = await client.chat.completions.create({
-          messages: [{ role: 'user', content: email_prompt }],
-          model: 'gpt-4',  // Fixed model name from 'gpt-4o' to 'gpt-4'
-      });
-      return res.choices[0].message.content;
+    const res = await client.chat.completions.create({
+      messages: [{ role: 'user', content: email_prompt }],
+      model: 'gpt-4', // Fixed model name from 'gpt-4o' to 'gpt-4'
+    });
+    return res.choices[0].message.content;
   } catch (error) {
-      console.error("Error in API call:", error);
-      throw error;  // Re-throw to handle in the calling function
+    console.error('Error in API call:', error);
+    throw error; // Re-throw to handle in the calling function
   }
 }
 
-
-async function subejctGen(name){
-  console.log("emailsubject")
-  const prompt=`
+async function subejctGen(name) {
+  console.log('emailsubject');
+  const prompt = `
       ###role
       You are an email marketing expert and a specialist in creating engaging and clickable subject lines for outreach emails.
 
@@ -224,18 +259,18 @@ async function subejctGen(name){
 
         
   
-  `
+  `;
   const res = await client.chat.completions.create({
     messages: [{ role: 'user', content: prompt }],
     model: 'gpt-4o',
   });
-  const subject=res.choices[0].message.content
-  return subject
+  const subject = res.choices[0].message.content;
+  return subject;
 }
 
 async function convertHtml(email_body) {
-  console.log("emailhtml")
-  const prompt=` 
+  console.log('emailhtml');
+  const prompt = ` 
       Here is the mail body: ${email_body}
       Your task is to:
 
@@ -246,45 +281,44 @@ async function convertHtml(email_body) {
       ### dont add any pretext or post text
       ###dont put the answer in """ """"
       
-  `
+  `;
   const res = await client.chat.completions.create({
     messages: [{ role: 'user', content: prompt }],
     model: 'gpt-4o',
   });
-  const html_body=res.choices[0].message.content
-  console.log(html_body)
-  return html_body
-  
+  const html_body = res.choices[0].message.content;
+  console.log(html_body);
+  return html_body;
 }
 
 exports.generateMail = onRequest(async (req, res) => {
   try {
-      const { linkedinURL, sender_name, sender_details } = req.body;
-      
-      // Await all promises properly
-      const linkedinData = await getLinkedinData(linkedinURL);
-      console.log(linkedinData)
-      const firstPost = await getFirstPost(linkedinData.username);
-      console.log(firstPost)
-      const mail_body = await generateMailbody(
-          firstPost,
-          linkedinData.name,
-          linkedinData.position,
-          linkedinData.summary,
-          sender_name,
-          sender_details
-      );
-      console.log(mail_body)
-      const subject_line = await subejctGen(linkedinData.name);
-      console.log(subject_line)
-      const html_body = await convertHtml(mail_body);
-      console.log(html_body)
-      
-      res.json({
-          body: html_body,
-          subject: subject_line
-      });
+    const { linkedinURL, sender_name, sender_details } = req.body;
+
+    // Await all promises properly
+    const linkedinData = await getLinkedinData(linkedinURL);
+    console.log(linkedinData);
+    const firstPost = await getFirstPost(linkedinData.username);
+    console.log(firstPost);
+    const mail_body = await generateMailbody(
+      firstPost,
+      linkedinData.name,
+      linkedinData.position,
+      linkedinData.summary,
+      sender_name,
+      sender_details
+    );
+    console.log(mail_body);
+    const subject_line = await subejctGen(linkedinData.name);
+    console.log(subject_line);
+    const html_body = await convertHtml(mail_body);
+    console.log(html_body);
+
+    res.json({
+      body: html_body,
+      subject: subject_line,
+    });
   } catch (error) {
-      res.status(500).json({ error: error.message });
+    res.status(500).json({ error: error.message });
   }
 });
