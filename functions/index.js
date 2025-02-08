@@ -6,7 +6,7 @@ const OpenAI = require('openai');
 dotenv.config();
 
 const client = new OpenAI({
-  apiKey: 'process.env.OPENAI_API_KEY',
+  apiKey: process.env.OPENAI_API_KEY,
   organization: process.env.ORG_ID, // This is the default and can be omitted
 });
 
