@@ -1,27 +1,20 @@
-import React, { useEffect, useState } from "react";
-import { useFirebase } from "../../firebase_context";
-import { collection, addDoc } from "firebase/firestore";
-import { useNavigate } from "react-router-dom";
-import { routes } from "../../app_router";
-import {
-  Container,
-  Typography,
-  TextField,
-  Button,
-  Box,
-  Snackbar,
-  Alert,
-} from "@mui/material";
+import React, { useEffect, useState } from 'react';
+import { useFirebase } from '../../firebase_context';
+import { collection, addDoc } from 'firebase/firestore';
+import { useNavigate } from 'react-router-dom';
+import { routes } from '../../app_router';
+import { Container, Typography, TextField, Button, Box, Snackbar, Alert } from '@mui/material';
+import { getProspects } from '../../api/api';
 
 const NewMarketing = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const [name, setName] = useState("");
-  const [keywords, setKeywords] = useState("");
-  const [positions, setPositions] = useState("");
-  const [locations, setLocations] = useState("");
-  const [offer, setOffer] = useState("");
+  const [name, setName] = useState('');
+  const [keywords, setKeywords] = useState('');
+  const [positions, setPositions] = useState('');
+  const [locations, setLocations] = useState('');
+  const [offer, setOffer] = useState('');
 
   const navigate = useNavigate();
 
@@ -40,16 +33,21 @@ const NewMarketing = () => {
 
     let leads;
     try {
-      leads = await generateLeads();
+      const locationsArray = locations.split(',').map((x) => x.trim());
+      const keywordsArray = keywords.split(',').map((x) => x.trim());
+      const positionsArray = positions.split(',').map((x) => x.trim());
+
+      const prospectsResp = await getProspects(locationsArray, keywordsArray, positionsArray);
+      leads = prospectsResp.data;
     } catch (error) {
-      setError("Failed to generate leads - try different parameters");
+      setError('Failed to generate leads - try different parameters');
       console.error(error);
       setLoading(false);
       return;
     }
 
     try {
-      const docRef = await addDoc(collection(db, "marketings"), {
+      const docRef = await addDoc(collection(db, 'marketings'), {
         name,
         keywords,
         positions,
@@ -59,33 +57,19 @@ const NewMarketing = () => {
         userID: user.uid,
       });
       setLoading(false);
-      navigate(routes.marketingLeads.replace(":id", docRef.id));
+      navigate(routes.marketingLeads.replace(':id', docRef.id));
     } catch (error) {
-      setError("Failed to add marketing data");
+      setError('Failed to add marketing data');
       console.error(error);
       setLoading(false);
     }
   };
 
-  const generateLeads = async (id) => {
-    // TODO: use API to generate prospects
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-    return mockLeads;
-  };
-
   return (
     <Container component="main" maxWidth="xs">
       {error && (
-        <Snackbar
-          open={true}
-          autoHideDuration={6000}
-          onClose={() => setError(null)}
-        >
-          <Alert
-            onClose={() => setError(null)}
-            severity="error"
-            sx={{ width: "100%" }}
-          >
+        <Snackbar open={true} autoHideDuration={6000} onClose={() => setError(null)}>
+          <Alert onClose={() => setError(null)} severity="error" sx={{ width: '100%' }}>
             {error}
           </Alert>
         </Snackbar>
@@ -93,9 +77,9 @@ const NewMarketing = () => {
       <Box
         sx={{
           marginTop: 8,
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
         }}
       >
         <Typography component="h1" variant="h5">
@@ -139,14 +123,8 @@ const NewMarketing = () => {
             value={offer}
             onChange={(e) => setOffer(e.target.value)}
           />
-          <Button
-            type="submit"
-            fullWidth
-            variant="contained"
-            sx={{ mt: 3, mb: 2 }}
-            disabled={loading}
-          >
-            {loading ? "Loading..." : "Generate leads"}
+          <Button type="submit" fullWidth variant="contained" sx={{ mt: 3, mb: 2 }} disabled={loading}>
+            {loading ? 'Loading...' : 'Generate leads'}
           </Button>
         </Box>
       </Box>
@@ -155,86 +133,3 @@ const NewMarketing = () => {
 };
 
 export default NewMarketing;
-
-const mockLeads = [
-  {
-    name: "John Doe",
-    organization_name: "Doe Inc.",
-    email: "john.doe@gmail.com",
-    linkedin_url: "https://www.linkedin.com/in/johndoe",
-    country: "USA",
-    city: "New York",
-  },
-  {
-    name: "Jane Smith",
-    organization_name: "Smith LLC",
-    email: "jane.smith@gmail.com",
-    linkedin_url: "https://www.linkedin.com/in/janesmith",
-    country: "USA",
-    city: "Los Angeles",
-  },
-  {
-    name: "Alice Johnson",
-    organization_name: "Johnson & Co.",
-    email: "alice.johnson@gmail.com",
-    linkedin_url: "https://www.linkedin.com/in/alicejohnson",
-    country: "USA",
-    city: "Chicago",
-  },
-  {
-    name: "Bob Brown",
-    organization_name: "Brown Enterprises",
-    email: "bob.brown@gmail.com",
-    linkedin_url: "https://www.linkedin.com/in/bobbrown",
-    country: "USA",
-    city: "Houston",
-  },
-  {
-    name: "Charlie Davis",
-    organization_name: "Davis Corp.",
-    email: "charlie.davis@gmail.com",
-    linkedin_url: "https://www.linkedin.com/in/charliedavis",
-    country: "USA",
-    city: "Phoenix",
-  },
-  {
-    name: "Eve Wilson",
-    organization_name: "Wilson Ltd.",
-    email: "eve.wilson@gmail.com",
-    linkedin_url: "https://www.linkedin.com/in/evewilson",
-    country: "USA",
-    city: "Philadelphia",
-  },
-  {
-    name: "Frank Miller",
-    organization_name: "Miller Group",
-    email: "frank.miller@gmail.com",
-    linkedin_url: "https://www.linkedin.com/in/frankmiller",
-    country: "USA",
-    city: "San Antonio",
-  },
-  {
-    name: "Grace Lee",
-    organization_name: "Lee Partners",
-    email: "grace.lee@gmail.com",
-    linkedin_url: "https://www.linkedin.com/in/gracelee",
-    country: "USA",
-    city: "San Diego",
-  },
-  {
-    name: "Henry Clark",
-    organization_name: "Clark Associates",
-    email: "henry.clark@gmail.com",
-    linkedin_url: "https://www.linkedin.com/in/henryclark",
-    country: "USA",
-    city: "Dallas",
-  },
-  {
-    name: "Ivy Martinez",
-    organization_name: "Martinez Holdings",
-    email: "ivy.martinez@gmail.com",
-    linkedin_url: "https://www.linkedin.com/in/ivymartinez",
-    country: "USA",
-    city: "San Jose",
-  },
-];
