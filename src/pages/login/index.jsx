@@ -34,7 +34,7 @@ const LoginPage = () => {
 
   useEffect(() => {
     if (user) {
-      navigate(routes.homepage);
+      navigate(routes.marketings);
     }
   }, [user, navigate]);
 
